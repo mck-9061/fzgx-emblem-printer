@@ -9,7 +9,6 @@ Other tools exist to allow you to directly convert an image to an emblem save fi
 - Generate required moves
 
 ## TODO
-- Refactor
 - Investigate bias more on nearest-neighbour - best value for colour dimensions and possibly a second value for x/y
 - Is sorting into groups the best approach? Try sorting every pixel with nearest-neighbour rather than using pre-defined colours
 - Diagonal inputs, or other multiple inputs (e.g adjusting colour while moving to target pixel)
