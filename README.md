@@ -1,0 +1,3 @@
+# F-Zero GX Emblem Printer
+
+Other tools exist to allow you to directly convert an image to an emblem save file. However, this won't work on the GameCube emulator on Switch 2 (at least at launch) since save editing won't be possible. This project takes an image and creates a list of commands to run inside the emblem editor, allowing for automated printing. Printing takes much more time than converting files (around an hour), but it should work with a suitable TAS interface allowing for custom emblems on an unmodified Switch 2.
