@@ -11,7 +11,6 @@ Other tools exist to allow you to directly convert an image to an emblem save fi
 ## TODO
 - Investigate bias more on nearest-neighbour - best value for colour dimensions and possibly a second value for x/y
 - Is sorting into groups the best approach? Try sorting every pixel with nearest-neighbour rather than using pre-defined colours
-- Diagonal inputs, or other multiple inputs (e.g adjusting colour while moving to target pixel)
 - Could try a different/less greedy traversal algorithm
 - Improve C-stick delay reset. Up/down is wasting inputs - if 2 adjacent sliders or all 3 need updating, they should be done at the same time
 - Proof of concept on hardware (some kind of GCN TAS interface, or preferably a Bluetooth Switch TAS interface and BlueRetro). Arduino?

@@ -128,60 +128,60 @@ def build_pixels():
     out.save("out.png")
 
 
-def move_cursor(current, target, outFile):
+def move_cursor(current, target, out):
     while target[0] != current[0]:
         if target[0] < current[0]:
-            outFile.write("left\n")
+            out.append("left")
             current[0] -= 1
         else:
-            outFile.write("right\n")
+            out.append("right")
             current[0] += 1
 
     while target[1] != current[1]:
         if target[1] < current[1]:
-            outFile.write("up\n")
+            out.append("up")
             current[1] -= 1
         else:
-            outFile.write("down\n")
+            out.append("down")
             current[1] += 1
 
 
 # rgb param: 0 = red, 1 = green, 2 = blue
-def move_rgb_slider(colour_cursor, rgb, current, target, outFile):
+def move_rgb_slider(colour_cursor, rgb, current, target, out):
     if current[rgb] != target[rgb]:
+
         while colour_cursor[2] != 0:
-            outFile.write("cup\n")
+            out.append("cup")
             colour_cursor[2] -= 1
 
         while colour_cursor[0] != rgb:
 
-            if colour_cursor[0] > rgb:
-                outFile.write("cdown\n")
-                colour_cursor[0] -= 1
-            else:
-                outFile.write("cup\n")
+            if colour_cursor[0] < rgb:
+                out.append("cdown")
                 colour_cursor[0] += 1
+            else:
+                out.append("cup")
+                colour_cursor[0] -= 1
 
         j = 1
         while current[rgb] > target[rgb]:
-            outFile.write("cleft\n")
+            out.append("cleft")
             current[rgb] -= 1
             j += 1
-            if j % 4 == 0:
+            if j % 3 == 0:
                 j = 1
-                outFile.write("cup\n")
-                outFile.write("cdown\n")
+                out.append("cdown")
+                out.append("cup")
 
         j = 1
         while current[rgb] < target[rgb]:
-            outFile.write("cright\n")
+            out.append("cright")
             current[rgb] += 1
             j += 1
-            if j % 4 == 0:
+            if j % 3 == 0:
                 j = 1
-                outFile.write("cup\n")
-                outFile.write("cdown\n")
-
+                out.append("cdown")
+                out.append("cup")
 
 def build_sequence():
     global pre_defined_colours
@@ -225,7 +225,10 @@ def build_sequence():
         y = pixel1[2]
 
         target_cursor = (x, y)
-        move_cursor(cursor, target_cursor, out)
+        movements = []
+        move_cursor(cursor, target_cursor, movements)
+        for m in movements:
+            out.write(m + "\n")
 
         # Move to pre-defined colour section
         while colour_cursor[0] != 3:
@@ -263,14 +266,31 @@ def build_sequence():
             x = pixel[1]
             y = pixel[2]
 
+            slider_moves = []
+            cursor_moves = []
+
             # Adjust RGB sliders
-            move_rgb_slider(colour_cursor, 0, current_rgb, rgb, out)
-            move_rgb_slider(colour_cursor, 1, current_rgb, rgb, out)
-            move_rgb_slider(colour_cursor, 2, current_rgb, rgb, out)
+            move_rgb_slider(colour_cursor, 0, current_rgb, rgb, slider_moves)
+            move_rgb_slider(colour_cursor, 1, current_rgb, rgb, slider_moves)
+            move_rgb_slider(colour_cursor, 2, current_rgb, rgb, slider_moves)
 
             # Move to target cursor
             target_cursor = (x, y)
-            move_cursor(cursor, target_cursor, out)
+            move_cursor(cursor, target_cursor, cursor_moves)
+
+            # Write
+            k = 0
+            for slider_move in slider_moves:
+                if k < len(cursor_moves):
+                    out.write(slider_move + "," + cursor_moves[k] + "\n")
+                else:
+                    out.write(slider_move + "\n")
+
+                k += 1
+
+            while k < len(cursor_moves):
+                out.write(cursor_moves[k] + "\n")
+                k += 1
 
             # Draw
             out.write("a\n")
@@ -295,7 +315,7 @@ def determine_best_bias():
     lowestLines = 999999999
     bestBias = 1.0
 
-    for i in decimal_range(0.9, 3.0, 0.01):
+    for i in decimal_range(3.0, 5.0, 0.01):
         colour_bias = i
 
         initialise_colours()
@@ -314,14 +334,14 @@ def determine_best_bias():
     return bestBias
 
 
-# colour_bias = determine_best_bias()
-colour_bias = 1.7
+colour_bias = determine_best_bias()
+# colour_bias = 1.7
 
 initialise_colours()
 
 print("Building pixels...")
 build_pixels()
-print("Building sqeuence...")
+print("Building sequence...")
 build_sequence()
 
 print("Done")

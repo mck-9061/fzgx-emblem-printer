@@ -16,8 +16,7 @@ buttons = {
     "cright": "h"
 }
 
-delay = 0.1
-pydirectinput.PAUSE = 0.033
+pydirectinput.PAUSE = 0
 
 print("Starting in 5...")
 time.sleep(5)
@@ -33,5 +32,16 @@ for l in sequence:
         print(line)
         continue
 
-    pydirectinput.press(buttons[line])
-    #time.sleep(delay)
+    toPress = [buttons[a] for a in line.split(",")]
+
+    for key in toPress:
+        pydirectinput.keyDown(key)
+
+    time.sleep(0.033)
+
+    for key in toPress:
+        pydirectinput.keyUp(key)
+
+    time.sleep(0.033)
+
+    #pydirectinput.hotkey(*toPress, interval=0.033, wait=0.0)
