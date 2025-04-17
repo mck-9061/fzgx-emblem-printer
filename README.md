@@ -4,14 +4,11 @@ Other tools exist to allow you to directly convert an image to an emblem save fi
 
 ## Current flow
 - Read image and downscale it to 62x62
-- Sort all pixels into groups based off RGB "distance" to GX's pre-defined colours
-- Sort each group using a simple nearest-neighbour algorithm (5D: x, y, r, g, b, with colour dimensions having some bias applied) to minimise required moves
+- Sort the pixels using a simple nearest-neighbour algorithm to minimise required moves
 - Generate required moves
 
 ## TODO
-- Investigate bias more on nearest-neighbour - best value for colour dimensions and possibly a second value for x/y
-- Is sorting into groups the best approach? Try sorting every pixel with nearest-neighbour rather than using pre-defined colours
-- Could try a different/less greedy traversal algorithm
+- Investigate better travelling salesman solutions
 - Improve C-stick delay reset. Up/down is wasting inputs - if 2 adjacent sliders or all 3 need updating, they should be done at the same time
 - Proof of concept on hardware (some kind of GCN TAS interface, or preferably a Bluetooth Switch TAS interface and BlueRetro). Arduino?
 - Frontend

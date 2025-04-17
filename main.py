@@ -1,24 +1,25 @@
-import math
 import PIL.Image as Image
 
 
-def pythag_5d(vector):
-    return math.sqrt((vector[0] ** 2) + (vector[1] ** 2) + (vector[2] ** 2) + (vector[3] ** 2) + (vector[4] ** 2))
+def calculate_required_moves(current_cursor, current_colour_cursor, current_rgb, target_pixel):
+    # Calculates the number of moves needed to print the target pixel from the current cursors
+    rgb = target_pixel[0]
+    x = target_pixel[1]
+    y = target_pixel[2]
 
+    slider_moves = []
+    cursor_moves = []
 
-def pythag_3d(vector):
-    return math.sqrt((vector[0] ** 2) + (vector[1] ** 2) + (vector[2] ** 2))
+    # Adjust RGB sliders
+    move_rgb_slider(current_colour_cursor, 0, current_rgb, rgb, slider_moves)
+    move_rgb_slider(current_colour_cursor, 1, current_rgb, rgb, slider_moves)
+    move_rgb_slider(current_colour_cursor, 2, current_rgb, rgb, slider_moves)
 
+    # Move to target cursor
+    target_cursor = (x, y)
+    move_cursor(current_cursor, target_cursor, cursor_moves)
 
-def distance_5d(v1, v2):
-    return pythag_5d((v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2], v1[3] - v2[3], v1[4] - v2[4]))
-
-
-def distance(v1, v2):
-    return pythag_3d((v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]))
-
-
-colour_bias = 1.0
+    return max(len(slider_moves), len(cursor_moves))
 
 
 def sort_nearest_neighbour(array):
@@ -39,11 +40,12 @@ def sort_nearest_neighbour(array):
 
         for a in remaining:
             # print(a)
-            xyrgb = (a[1], a[2], a[0][0] * colour_bias, a[0][1] * colour_bias, a[0][2] * colour_bias)
-            currentXyrgb = (current[1], current[2], current[0][0] * colour_bias, current[0][1] * colour_bias,
-                            current[0][2] * colour_bias)
+            # xyrgb = (a[1], a[2], a[0][0] * colour_bias, a[0][1] * colour_bias, a[0][2] * colour_bias)
+            # currentXyrgb = (current[1], current[2], current[0][0] * colour_bias, current[0][1] * colour_bias,
+            #                 current[0][2] * colour_bias)
 
-            d = distance_5d(xyrgb, currentXyrgb)
+            d = calculate_required_moves([current[1], current[2]], [3, 0, 0],
+                                         [current[0][0], current[0][1], current[0][2]], a)
             if d < nearestDistance:
                 nearest = a
                 nearestDistance = d
@@ -52,36 +54,16 @@ def sort_nearest_neighbour(array):
         current = nearest
         remaining.remove(nearest)
 
+        print(len(remaining))
+
     return done
 
 
-pre_defined_colours = {}
-
-
-def initialise_colours():
-    global pre_defined_colours
-    pre_defined_colours = {
-        "red": (232, 24, 32, []),
-        "orange": (240, 144, 24, []),
-        "yellow": (248, 240, 0, []),
-        "light_green": (136, 192, 56, []),
-        "green": (56, 176, 72, []),
-        "light_blue": (0, 168, 232, []),
-        "blue": (0, 80, 160, []),
-        "purple": (96, 40, 144, []),
-        "pink": (232, 0, 136, []),
-        "dark_red": (152, 8, 8, []),
-        "gold": (128, 120, 0, []),
-        "dark_green": (0, 88, 32, []),
-        "dark_blue": (0, 48, 96, []),
-        "white": (248, 248, 248, []),
-        "grey": (128, 128, 128, []),
-        "black": (0, 0, 0, [])
-    }
+all_pixels = []
 
 
 def build_pixels():
-    global pre_defined_colours
+    global all_pixels
 
     im = Image.open("in.png")
     im.thumbnail((62, 62), Image.Resampling.LANCZOS)
@@ -93,37 +75,25 @@ def build_pixels():
             r, g, b, a = im.getpixel((x, y))
             pixel = (r, g, b)
 
-            closest_colour = "black"
-            closest_distance = 99999
-
             if a == 0:
                 continue
 
-            for c_name in pre_defined_colours:
-                c = pre_defined_colours[c_name]
-                d = distance(c, pixel)
-                if d <= closest_distance:
-                    closest_distance = d
-                    closest_colour = c_name
-
-            pre_defined_colours[closest_colour][3].append((pixel, x, y))
+            all_pixels.append((pixel, x, y))
 
     x = 0
     y = 0
-    for c_name in pre_defined_colours:
-        pre_defined_colours[c_name] = (
-            pre_defined_colours[c_name][0], pre_defined_colours[c_name][1], pre_defined_colours[c_name][2],
-            sort_nearest_neighbour(pre_defined_colours[c_name][3]))
 
-        for pixel in pre_defined_colours[c_name][3]:
-            # print(pixel)
-            toWrite = (pixel[0][0], pixel[0][1], pixel[0][2], 255)
+    all_pixels = sort_nearest_neighbour(all_pixels)
 
-            out.putpixel((pixel[1], pixel[2]), toWrite)
-            x += 1
-            if x == im.width:
-                x = 0
-                y += 1
+    for pixel in all_pixels:
+        # print(pixel)
+        toWrite = (pixel[0][0], pixel[0][1], pixel[0][2], 255)
+
+        out.putpixel((pixel[1], pixel[2]), toWrite)
+        x += 1
+        if x == im.width:
+            x = 0
+            y += 1
 
     out.save("out.png")
 
@@ -168,7 +138,7 @@ def move_rgb_slider(colour_cursor, rgb, current, target, out):
             out.append("cleft")
             current[rgb] -= 1
             j += 1
-            if j % 3 == 0:
+            if j % 4 == 0:
                 j = 1
                 out.append("cdown")
                 out.append("cup")
@@ -178,19 +148,16 @@ def move_rgb_slider(colour_cursor, rgb, current, target, out):
             out.append("cright")
             current[rgb] += 1
             j += 1
-            if j % 3 == 0:
+            if j % 4 == 0:
                 j = 1
                 out.append("cdown")
                 out.append("cup")
 
-def build_sequence():
-    global pre_defined_colours
 
+def build_sequence():
     out = open("out.txt", "w+", encoding="utf-8")
 
-    set_selected_colour = ["a", "x", "b", "right", "a", "a", "b", "left", "a"]
-
-    pixels_remaining = sum([len(pre_defined_colours[a][3]) for a in pre_defined_colours])
+    pixels_remaining = len(all_pixels)
     out.write("-remaining: " + str(pixels_remaining) + "\n")
 
     # Set up
@@ -206,97 +173,60 @@ def build_sequence():
         out.write("up\n")
         out.write("left\n")
 
-    c_id = -1
     cursor = [0, 0]
     # Index 0: 0 = red, 1 = green, 2 = blue, 3 = Pre-defined section
     colour_cursor = [3, 0, 0]
 
-    for c_name in pre_defined_colours:
-        out.write("---------------" + c_name + "---------------\n")
+    # Move to first pixel
+    pixel1 = all_pixels[0]
+    x = pixel1[1]
+    y = pixel1[2]
 
-        c_id += 1
+    target_cursor = (x, y)
+    movements = []
+    move_cursor(cursor, target_cursor, movements)
+    for m in movements:
+        out.write(m + "\n")
 
-        if len(pre_defined_colours[c_name][3]) == 0:
-            continue
+    current_rgb = [0, 0, 0]
 
-        # Move to first pixel
-        pixel1 = pre_defined_colours[c_name][3][0]
-        x = pixel1[1]
-        y = pixel1[2]
+    # Draw each pixel
+    for pixel in all_pixels:
+        rgb = pixel[0]
+        x = pixel[1]
+        y = pixel[2]
 
-        target_cursor = (x, y)
-        movements = []
-        move_cursor(cursor, target_cursor, movements)
-        for m in movements:
-            out.write(m + "\n")
+        slider_moves = []
+        cursor_moves = []
 
-        # Move to pre-defined colour section
-        while colour_cursor[0] != 3:
-            out.write("cdown\n")
-            colour_cursor[0] += 1
+        # Adjust RGB sliders
+        move_rgb_slider(colour_cursor, 0, current_rgb, rgb, slider_moves)
+        move_rgb_slider(colour_cursor, 1, current_rgb, rgb, slider_moves)
+        move_rgb_slider(colour_cursor, 2, current_rgb, rgb, slider_moves)
 
         # Move to target cursor
-        target_cursor = (c_id % 4, c_id // 4)
+        target_cursor = (x, y)
+        move_cursor(cursor, target_cursor, cursor_moves)
 
-        while target_cursor[0] != colour_cursor[1]:
-            if target_cursor[0] < colour_cursor[1]:
-                out.write("cleft\n")
-                colour_cursor[1] -= 1
+        # Write
+        k = 0
+        for slider_move in slider_moves:
+            if k < len(cursor_moves):
+                out.write(slider_move + "," + cursor_moves[k] + "\n")
             else:
-                out.write("cright\n")
-                colour_cursor[1] += 1
+                out.write(slider_move + "\n")
 
-        while target_cursor[1] != colour_cursor[2]:
-            if target_cursor[1] < colour_cursor[2]:
-                out.write("cup\n")
-                colour_cursor[2] -= 1
-            else:
-                out.write("cdown\n")
-                colour_cursor[2] += 1
+            k += 1
 
-        # Select colour
-        for m in set_selected_colour:
-            out.write(m + "\n")
+        while k < len(cursor_moves):
+            out.write(cursor_moves[k] + "\n")
+            k += 1
 
-        current_rgb = [pre_defined_colours[c_name][0], pre_defined_colours[c_name][1], pre_defined_colours[c_name][2]]
+        # Draw
+        out.write("a\n")
+        pixels_remaining -= 1
 
-        # Draw each pixel
-        for pixel in pre_defined_colours[c_name][3]:
-            rgb = pixel[0]
-            x = pixel[1]
-            y = pixel[2]
-
-            slider_moves = []
-            cursor_moves = []
-
-            # Adjust RGB sliders
-            move_rgb_slider(colour_cursor, 0, current_rgb, rgb, slider_moves)
-            move_rgb_slider(colour_cursor, 1, current_rgb, rgb, slider_moves)
-            move_rgb_slider(colour_cursor, 2, current_rgb, rgb, slider_moves)
-
-            # Move to target cursor
-            target_cursor = (x, y)
-            move_cursor(cursor, target_cursor, cursor_moves)
-
-            # Write
-            k = 0
-            for slider_move in slider_moves:
-                if k < len(cursor_moves):
-                    out.write(slider_move + "," + cursor_moves[k] + "\n")
-                else:
-                    out.write(slider_move + "\n")
-
-                k += 1
-
-            while k < len(cursor_moves):
-                out.write(cursor_moves[k] + "\n")
-                k += 1
-
-            # Draw
-            out.write("a\n")
-            pixels_remaining -= 1
-
-            out.write("-remaining: " + str(pixels_remaining) + "\n")
+        out.write("-remaining: " + str(pixels_remaining) + "\n")
 
     out.close()
 
@@ -306,38 +236,6 @@ def decimal_range(start, stop, increment):
         yield start
         start += increment
 
-
-def determine_best_bias():
-    global colour_bias
-
-    initialise_colours()
-
-    lowestLines = 999999999
-    bestBias = 1.0
-
-    for i in decimal_range(3.0, 5.0, 0.01):
-        colour_bias = i
-
-        initialise_colours()
-
-        build_pixels()
-        build_sequence()
-        f = open("out.txt", "r", encoding="utf-8").readlines()
-        print("Bias " + str(i) + ": " + str(len(f)))
-
-        if len(f) < lowestLines:
-            lowestLines = len(f)
-            bestBias = i
-
-    print("Best bias is " + str(bestBias) + " at " + str(lowestLines) + " steps")
-
-    return bestBias
-
-
-colour_bias = determine_best_bias()
-# colour_bias = 1.7
-
-initialise_colours()
 
 print("Building pixels...")
 build_pixels()
