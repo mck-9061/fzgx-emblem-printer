@@ -1,6 +1,6 @@
 import time
 import serial
-from mss import mss, tools
+import cv2
 import PIL.Image as Image
 from collections import deque
 
@@ -98,6 +98,14 @@ def move_cursor(current, target, out):
 expected_colour_cursor = 2
 delay = 0.12
 
+# Setup camera
+cap = cv2.VideoCapture(5)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 2560)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1440)
+
+x_offset = 907
+y_offset = 322
+
 while True:
     a = input("Enter 'd' to enter button mode, enter 'y' to begin TAS: ")
 
@@ -129,125 +137,140 @@ while True:
                     else:
                         print("Checking pixel...")
                         port.write(b'\x06')
-                        time.sleep(0.3)
+                        time.sleep(0.5)
                         x = int(currentPixel.split(",")[3])
                         y = int(currentPixel.split(",")[4])
 
-                        with mss() as sct:
-                            monitor = {'top': 280, 'left': 1022, 'width': 515, 'height': 515, 'mon': 1}
+                        cap.read()
+                        ret, frame = cap.read()
 
-                            # Grab the data
-                            sct_img = sct.grab(monitor)
+                        right_shifts = x // 31
+                        down_shifts = y // 31
 
-                            right_shifts = x // 3
-                            down_shifts = y // 3
+                        readPixel = frame[6 + (12 * y) + down_shifts + y_offset, 6 + (12 * x) + right_shifts + x_offset]
+                        pixel = (int(readPixel[2]), int(readPixel[1]), int(readPixel[0]))
 
-                            pixel = sct_img.pixel(4 + (8*x) + right_shifts, 4 + (8*y) + down_shifts)
+                        print(pixel)
+                        print(currentPixel)
 
-                            print(pixel)
-                            print(currentPixel)
+                        totalDifference = abs(pixel[0] - int(currentPixel.split(",")[0])) + abs(pixel[1] - int(currentPixel.split(",")[1])) + abs(pixel[2] - int(currentPixel.split(",")[2]))
 
-                            totalDifference = abs(pixel[0] - int(currentPixel.split(",")[0])) + abs(pixel[1] - int(currentPixel.split(",")[1])) + abs(pixel[2] - int(currentPixel.split(",")[2]))
+                        if totalDifference > 25:
+                            print("Desync! Resetting cursors and replotting last pixel.")
 
-                            if totalDifference > 30:
-                                print("Desync! Resetting cursors and replotting last pixel.")
+                            # Save captured image
+                            out = Image.new("RGBA", (62, 62), 0xffffff)
 
-                                for i in range(75):
-                                    port.write(buttons["up"])
-                                    time.sleep(delay)
-                                    port.write(buttons["left"])
-                                    time.sleep(delay)
+                            for x2 in range(0, 62):
+                                for y2 in range(0, 62):
+                                    #print(str(x2) + ", " + str(y2))
 
-                                for i in range(6):
-                                    port.write(buttons["cup"])
-                                    time.sleep(delay)
+                                    left_shifts = x2 // 31
+                                    up_shifts = y2 // 31
 
-                                for i in range(40):
-                                    port.write(buttons["cleft"])
-                                    time.sleep(delay)
+                                    pixel = frame[
+                                        6 + (12 * y2) + up_shifts + y_offset, 6 + (12 * x2) + left_shifts + x_offset]
+                                    #print(pixel)
+                                    out.putpixel((x2, y2), (pixel[2], pixel[1], pixel[0], 255))
 
-                                port.write(buttons["cdown"])
-                                for i in range(40):
-                                    port.write(buttons["cleft"])
-                                    time.sleep(delay)
+                            out.save("fail.png")
 
-                                port.write(buttons["cdown"])
-                                for i in range(40):
-                                    port.write(buttons["cleft"])
-                                    time.sleep(delay)
+                            for i in range(75):
+                                port.write(buttons["up"])
+                                time.sleep(delay)
+                                port.write(buttons["left"])
+                                time.sleep(delay)
 
+                            for i in range(6):
                                 port.write(buttons["cup"])
                                 time.sleep(delay)
-                                port.write(buttons["cdown"])
 
-                                port.write(buttons["a"])
+                            for i in range(40):
+                                port.write(buttons["cleft"])
                                 time.sleep(delay)
-                                print("Cursor at top left, all colours at 0, colour cursor on blue. Replotting last pixel.")
 
-                                cursor = [0, 0]
-                                colour_cursor = [2, 0, 0]
-                                current_rgb = [0, 0, 0]
-                                rgb = (int(currentPixel.split(",")[0]), int(currentPixel.split(",")[1]), int(currentPixel.split(",")[2]))
-                                slider_moves = []
-                                cursor_moves = []
+                            port.write(buttons["cdown"])
+                            for i in range(40):
+                                port.write(buttons["cleft"])
+                                time.sleep(delay)
 
-                                # Adjust RGB sliders
-                                move_rgb_slider(colour_cursor, 0, current_rgb, rgb, slider_moves)
-                                move_rgb_slider(colour_cursor, 1, current_rgb, rgb, slider_moves)
-                                move_rgb_slider(colour_cursor, 2, current_rgb, rgb, slider_moves)
+                            port.write(buttons["cdown"])
+                            for i in range(40):
+                                port.write(buttons["cleft"])
+                                time.sleep(delay)
 
-                                # Move to target cursor
-                                target_cursor = (x, y)
-                                move_cursor(cursor, target_cursor, cursor_moves)
+                            port.write(buttons["cup"])
+                            time.sleep(delay)
+                            port.write(buttons["cdown"])
 
-                                fixing_moves = []
+                            port.write(buttons["a"])
+                            time.sleep(delay)
+                            print("Cursor at top left, all colours at 0, colour cursor on blue. Replotting last pixel.")
 
-                                # Write
-                                k = 0
-                                for slider_move in slider_moves:
-                                    if k < len(cursor_moves):
-                                        fixing_moves.append(slider_move + "," + cursor_moves[k] + "\n")
-                                    else:
-                                        fixing_moves.append(slider_move + "\n")
+                            cursor = [0, 0]
+                            colour_cursor = [2, 0, 0]
+                            current_rgb = [0, 0, 0]
+                            rgb = (int(currentPixel.split(",")[0]), int(currentPixel.split(",")[1]), int(currentPixel.split(",")[2]))
+                            slider_moves = []
+                            cursor_moves = []
 
-                                    k += 1
+                            # Adjust RGB sliders
+                            move_rgb_slider(colour_cursor, 0, current_rgb, rgb, slider_moves)
+                            move_rgb_slider(colour_cursor, 1, current_rgb, rgb, slider_moves)
+                            move_rgb_slider(colour_cursor, 2, current_rgb, rgb, slider_moves)
 
-                                while k < len(cursor_moves):
-                                    fixing_moves.append(cursor_moves[k] + "\n")
-                                    k += 1
+                            # Move to target cursor
+                            target_cursor = (x, y)
+                            move_cursor(cursor, target_cursor, cursor_moves)
 
-                                if colour_cursor[0] != expected_colour_cursor:
-                                    while colour_cursor[0] > expected_colour_cursor:
-                                        fixing_moves.append("cup\n")
-                                        colour_cursor[0] -= 1
+                            fixing_moves = []
 
-                                    while colour_cursor[0] < expected_colour_cursor:
-                                        fixing_moves.append("cdown\n")
-                                        colour_cursor[0] += 1
-
-                                # Draw
-                                fixing_moves.append("a\n")
-
-                                sequence.appendleft("-p" + currentPixel)
-                                sequence.appendleft("-fixed")
-                                for a in reversed(fixing_moves):
-                                    print(a)
-                                    sequence.appendleft(a)
-
-                                sequence.appendleft("-fixing")
-                                if nextCurrentPixel == "":
-                                    nextCurrentPixel = l.replace("-p", "").strip()
-                            else:
-                                print("Good")
-
-                                if nextCurrentPixel != "":
-                                    currentPixel = nextCurrentPixel
-                                    nextCurrentPixel = ""
+                            # Write
+                            k = 0
+                            for slider_move in slider_moves:
+                                if k < len(cursor_moves):
+                                    fixing_moves.append(slider_move + "," + cursor_moves[k] + "\n")
                                 else:
-                                    currentPixel = l.replace("-p", "").strip()
+                                    fixing_moves.append(slider_move + "\n")
 
-                                port.write(b'\x07')
-                                time.sleep(delay)
+                                k += 1
+
+                            while k < len(cursor_moves):
+                                fixing_moves.append(cursor_moves[k] + "\n")
+                                k += 1
+
+                            if colour_cursor[0] != expected_colour_cursor:
+                                while colour_cursor[0] > expected_colour_cursor:
+                                    fixing_moves.append("cup\n")
+                                    colour_cursor[0] -= 1
+
+                                while colour_cursor[0] < expected_colour_cursor:
+                                    fixing_moves.append("cdown\n")
+                                    colour_cursor[0] += 1
+
+                            # Draw
+                            fixing_moves.append("a\n")
+
+                            sequence.appendleft("-p" + currentPixel)
+                            sequence.appendleft("-fixed")
+                            for a in reversed(fixing_moves):
+                                print(a)
+                                sequence.appendleft(a)
+
+                            sequence.appendleft("-fixing")
+                            if nextCurrentPixel == "":
+                                nextCurrentPixel = l.replace("-p", "").strip()
+                        else:
+                            print("Good")
+
+                            if nextCurrentPixel != "":
+                                currentPixel = nextCurrentPixel
+                                nextCurrentPixel = ""
+                            else:
+                                currentPixel = l.replace("-p", "").strip()
+
+                            port.write(b'\x07')
+                            time.sleep(delay)
 
                 print(line)
                 continue

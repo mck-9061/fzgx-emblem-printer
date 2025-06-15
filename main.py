@@ -66,7 +66,7 @@ def build_pixels():
     out = Image.new("RGBA", (62, 62), 0xffffff)
 
     width, height = im.size
-    for x in range(width):
+    for x in range(width-1):
         for y in range(height):
             r, g, b, a = im.getpixel((x, y))
             r = (r // rounder) * rounder
