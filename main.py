@@ -24,14 +24,15 @@ def calculate_required_moves(current_cursor, current_colour_cursor, current_rgb,
 
 def sort_nearest_neighbour(array):
     # Sort an array of type [tuple[tuple[int, int, int], int, int]] by the nearest neighbour
-    remaining = [a for a in array]
-    # print(remaining)
+    initial_state = ((0, 0, 0), 0, 0)
+    remaining = [initial_state]
+    remaining += [a for a in array]
     done = []
 
     if len(array) == 0:
         return done
 
-    current = array[0]
+    current = initial_state
     remaining.remove(current)
 
     while len(remaining) != 0:
@@ -39,18 +40,13 @@ def sort_nearest_neighbour(array):
         nearestDistance = 99999
 
         for a in remaining:
-            # print(a)
-            # xyrgb = (a[1], a[2], a[0][0] * colour_bias, a[0][1] * colour_bias, a[0][2] * colour_bias)
-            # currentXyrgb = (current[1], current[2], current[0][0] * colour_bias, current[0][1] * colour_bias,
-            #                 current[0][2] * colour_bias)
-
-            d = calculate_required_moves([current[1], current[2]], [3, 0, 0],
+            d = calculate_required_moves([current[1], current[2]], [2, 0, 0],
                                          [current[0][0], current[0][1], current[0][2]], a)
             if d < nearestDistance:
                 nearest = a
                 nearestDistance = d
 
-        done.append(current)
+        done.append(nearest)
         current = nearest
         remaining.remove(nearest)
 
@@ -60,7 +56,7 @@ def sort_nearest_neighbour(array):
 
 
 all_pixels = []
-
+rounder = 34
 
 def build_pixels():
     global all_pixels
@@ -73,6 +69,10 @@ def build_pixels():
     for x in range(width):
         for y in range(height):
             r, g, b, a = im.getpixel((x, y))
+            r = (r // rounder) * rounder
+            g = (g // rounder) * rounder
+            b = (b // rounder) * rounder
+
             pixel = (r, g, b)
 
             if a == 0:
@@ -86,7 +86,6 @@ def build_pixels():
     all_pixels = sort_nearest_neighbour(all_pixels)
 
     for pixel in all_pixels:
-        # print(pixel)
         toWrite = (pixel[0][0], pixel[0][1], pixel[0][2], 255)
 
         out.putpixel((pixel[1], pixel[2]), toWrite)
@@ -99,19 +98,18 @@ def build_pixels():
 
 
 def move_cursor(current, target, out):
-    while target[0] != current[0]:
+    while target[0] != current[0] or target[1] != current[1]:
         if target[0] < current[0]:
             out.append("left")
             current[0] -= 1
-        else:
+        elif target[0] > current[0]:
             out.append("right")
             current[0] += 1
 
-    while target[1] != current[1]:
         if target[1] < current[1]:
             out.append("up")
             current[1] -= 1
-        else:
+        elif target[1] > current[1]:
             out.append("down")
             current[1] += 1
 
@@ -161,12 +159,9 @@ def build_sequence():
     out.write("-remaining: " + str(pixels_remaining) + "\n")
 
     # Set up
-    # Set brush size
-    out.write("z\n")
-    out.write("z\n")
-    out.write("z\n")
-
     out.write("a\n")
+
+    out.write("cup\n")
 
     # Move to top left
     for i in range(32):
@@ -175,7 +170,7 @@ def build_sequence():
 
     cursor = [0, 0]
     # Index 0: 0 = red, 1 = green, 2 = blue, 3 = Pre-defined section
-    colour_cursor = [3, 0, 0]
+    colour_cursor = [2, 0, 0]
 
     # Move to first pixel
     pixel1 = all_pixels[0]
@@ -198,6 +193,8 @@ def build_sequence():
 
         slider_moves = []
         cursor_moves = []
+
+        out.write("-p" + str(rgb[0]) + "," + str(rgb[1]) + "," + str(rgb[2]) + "," + str(x) + "," + str(y) + "\n")
 
         # Adjust RGB sliders
         move_rgb_slider(colour_cursor, 0, current_rgb, rgb, slider_moves)
@@ -226,15 +223,10 @@ def build_sequence():
         out.write("a\n")
         pixels_remaining -= 1
 
+        out.write("-e" + str(colour_cursor[0]) + "\n")
         out.write("-remaining: " + str(pixels_remaining) + "\n")
 
     out.close()
-
-
-def decimal_range(start, stop, increment):
-    while start < stop:
-        yield start
-        start += increment
 
 
 print("Building pixels...")

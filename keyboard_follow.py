@@ -4,8 +4,6 @@ import time
 buttons = {
     "a": "a",
     "b": "n",
-    "x": "b",
-    "z": "/",
     "up": "up",
     "down": "down",
     "left": "left",
